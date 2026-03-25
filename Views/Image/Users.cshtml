@@ -1,0 +1,55 @@
+﻿@model IEnumerable<PhotoApp.Models.ApplicationUser>
+
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<PhotoApp.Models.ApplicationUser> UserManager
+@inject PhotoApp.Data.ApplicationDbContext Db
+
+@{
+    var currentUserId = UserManager.GetUserId(User);
+}
+
+<h2>Користувачі</h2>
+
+<ul class="list-group">
+    @foreach (var user in Model)
+    {
+        var isFollowing = Db.Follows
+        .Any(f => f.FollowerId == currentUserId && f.FollowingId == user.Id);
+
+        var followersCount = Db.Follows
+        .Count(f => f.FollowingId == user.Id);
+
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+                <a asp-controller="Image"
+                   asp-action="Profile"
+                   asp-route-id="@user.Id">
+                    @user.UserName
+                </a>
+
+                <span class="badge bg-secondary ms-2">
+                    Підписники: @followersCount
+                </span>
+            </div>
+
+            @if (isFollowing)
+            {
+                <a asp-controller="Follow"
+                   asp-action="Unfollow"
+                   asp-route-id="@user.Id"
+                   class="btn btn-sm btn-primary">
+                    Відписатися
+                </a>
+            }
+            else
+            {
+                <a asp-controller="Follow"
+                   asp-action="Follow"
+                   asp-route-id="@user.Id"
+                   class="btn btn-sm btn-outline-primary">
+                    Підписатися
+                </a>
+            }
+        </li>
+    }
+</ul>

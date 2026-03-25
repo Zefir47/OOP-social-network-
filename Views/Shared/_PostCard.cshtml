@@ -1,0 +1,176 @@
+@* Views/Shared/_PostCard.cshtml *@
+@model PhotoApp.Models.ImagePost
+
+@using PhotoApp.Models
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@inject PhotoApp.Data.ApplicationDbContext Db
+
+@{
+    var currentUserId = ViewBag.CurrentUserId as string;
+    var post = Model;
+    var isLikedByMe = post.Likes.Any(l => l.UserId == currentUserId);
+
+    var replyCount   = Db.PostInteractions.Count(pi => pi.OriginalPostId == post.Id && pi.Type == InteractionType.Reply);
+    var forwardCount = Db.PostInteractions.Count(pi => pi.OriginalPostId == post.Id && pi.Type == InteractionType.Forward);
+
+    var replyInteraction = Db.PostInteractions
+        .Include(pi => pi.OriginalPost).ThenInclude(op => op.User)
+        .FirstOrDefault(pi => pi.ReplyPostId == post.Id && pi.Type == InteractionType.Reply);
+
+    var comments = Db.Comments
+        .Include(c => c.Author)
+        .Where(c => c.ImagePostId == post.Id && c.ParentId == null)
+        .OrderByDescending(c => c.CreatedAt)
+        .ToList();
+
+    var cardId = $"post-{post.Id}";
+}
+
+<div class="post-card @(replyInteraction != null ? "post-card--reply" : "")">
+
+    @if (replyInteraction != null)
+    {
+        <div class="post-card__badge post-card__badge--reply">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+            Відповідь на пост
+            <a href="/Image/Profile/@replyInteraction.OriginalPost.UserId">@replyInteraction.OriginalPost.User.UserName</a>
+        </div>
+    }
+
+    <a href="/Image/Profile/@post.UserId" class="post-card__img-wrap">
+        <img src="@post.ImagePath" class="post-card__img" alt="@post.Description" loading="lazy" />
+    </a>
+
+    <div class="post-card__body">
+
+        @if (replyInteraction != null)
+        {
+            <a href="/Image/Profile/@replyInteraction.OriginalPost.UserId" class="post-card__original-preview">
+                <img src="@replyInteraction.OriginalPost.ImagePath" class="post-card__original-thumb" />
+                <div class="post-card__original-info">
+                    <span class="post-card__original-author">@replyInteraction.OriginalPost.User.UserName</span>
+                    <span class="post-card__original-desc">@replyInteraction.OriginalPost.Description</span>
+                </div>
+            </a>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(post.Description))
+        {
+            <p class="post-card__desc">@post.Description</p>
+        }
+
+        <div class="post-card__stats">
+            <span class="post-card__stat" title="Лайки">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="@(isLikedByMe ? "currentColor" : "none")" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                @post.Likes.Count
+            </span>
+            <span class="post-card__stat" title="Коментарі">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                @post.Comments.Count
+            </span>
+            <span class="post-card__stat" title="Відповіді">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+                @replyCount
+            </span>
+            <span class="post-card__stat" title="Пересилань">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                @forwardCount
+            </span>
+            <span class="post-card__date">@post.CreatedAt.ToString("dd.MM.yyyy")</span>
+        </div>
+
+        <div class="post-card__actions">
+            @if (isLikedByMe)
+            {
+                <form method="post" action="/Image/Unlike/@post.Id">
+                    <button class="post-card__btn post-card__btn--active">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                        Лайк
+                    </button>
+                </form>
+            }
+            else
+            {
+                <form method="post" action="/Image/Like/@post.Id">
+                    <button class="post-card__btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                        Лайк
+                    </button>
+                </form>
+            }
+
+            <a href="/PostInteraction/Reply/@post.Id" class="post-card__btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+                Відповісти
+            </a>
+
+            @if (post.UserId != currentUserId)
+            {
+                <a href="/PostInteraction/Forward/@post.Id" class="post-card__btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                    Переслати
+                </a>
+            }
+
+            <button class="post-card__btn post-card__btn--ghost"
+                    onclick="toggleComments('@cardId')" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Коментарі
+            </button>
+        </div>
+
+        <div class="post-card__comments" id="@cardId" style="display:none;">
+            @if (User.Identity.IsAuthenticated)
+            {
+                <form method="post" asp-controller="Comment" asp-action="Add" class="post-card__comment-form">
+                    <input type="hidden" name="imagePostId" value="@post.Id" />
+                    <textarea name="content" class="post-card__comment-input"
+                              rows="2" maxlength="1000"
+                              placeholder="Напишіть коментар..." required></textarea>
+                    <button type="submit" class="post-card__comment-submit">Надіслати</button>
+                </form>
+            }
+
+            @if (comments.Any())
+            {
+                <div class="post-card__comment-list">
+                    @foreach (var comment in comments)
+                    {
+                        <div class="post-card__comment">
+                            <div class="post-card__comment-header">
+                                <a asp-controller="Image" asp-action="Profile"
+                                   asp-route-id="@comment.Author.Id"
+                                   class="post-card__comment-author">@comment.Author.UserName</a>
+                                <span class="post-card__comment-date">
+                                    @comment.CreatedAt.ToString("dd.MM HH:mm")
+                                    @if (comment.UpdatedAt != null) { <em>(ред.)</em> }
+                                </span>
+                                @if (comment.AuthorId == currentUserId)
+                                {
+                                    <span class="post-card__comment-actions">
+                                        <a asp-controller="Comment" asp-action="Edit"
+                                           asp-route-id="@comment.Id"
+                                           asp-route-returnUrl="@(Context.Request.Path + Context.Request.QueryString)"
+                                           class="post-card__comment-action">Ред.</a>
+                                        <form method="post" asp-controller="Comment"
+                                              asp-action="Delete" asp-route-id="@comment.Id"
+                                              style="display:inline;">
+                                            <button class="post-card__comment-action post-card__comment-action--danger">Вид.</button>
+                                        </form>
+                                    </span>
+                                }
+                            </div>
+                            <p class="post-card__comment-text">@comment.Content</p>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="post-card__no-comments">Коментарів ще немає.</p>
+            }
+        </div>
+
+    </div>
+</div>

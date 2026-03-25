@@ -1,0 +1,105 @@
+@model IEnumerable<PhotoApp.Models.ImagePost>
+
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using PhotoApp.Models
+@inject UserManager<PhotoApp.Models.ApplicationUser> UserManager
+@inject PhotoApp.Data.ApplicationDbContext Db
+
+@{
+    var currentUserId = UserManager.GetUserId(User);
+    var profileUserId = ViewBag.UserId as string;
+    ViewBag.CurrentUserId = currentUserId;
+
+    var isFollowing = Db.Follows.Any(f => f.FollowerId == currentUserId && f.FollowingId == profileUserId);
+    var followersCount = Db.Follows.Count(f => f.FollowingId == profileUserId);
+    var followingCount = Db.Follows.Count(f => f.FollowerId == profileUserId);
+
+    var profileForwards = Db.PostInteractions
+        .Include(pi => pi.OriginalPost).ThenInclude(p => p.User)
+        .Include(pi => pi.OriginalPost).ThenInclude(p => p.Likes)
+        .Include(pi => pi.OriginalPost).ThenInclude(p => p.Comments)
+        .Where(pi => pi.Type == InteractionType.Forward && pi.ActorId == profileUserId)
+        .OrderByDescending(pi => pi.CreatedAt)
+        .ToList();
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-pa">@TempData["Error"]</div>
+}
+
+<div class="profile-header">
+    <h2 class="profile-header__name">@ViewBag.UserName</h2>
+    @if (currentUserId != profileUserId)
+    {
+        if (isFollowing)
+        {
+            <a href="/Follow/Unfollow/@profileUserId" class="btn-pa-primary">Відписатися</a>
+        }
+        else
+        {
+            <a href="/Follow/Follow/@profileUserId" class="btn-pa-outline">Підписатися</a>
+        }
+    }
+</div>
+
+<div class="profile-meta">
+    <a href="/Image/Followers/@profileUserId" class="profile-meta__item">
+        <strong>@followersCount</strong>
+        підписників
+    </a>
+    <a href="/Image/Following/@profileUserId" class="profile-meta__item">
+        <strong>@followingCount</strong>
+        підписок
+    </a>
+    <div class="profile-meta__item">
+        <strong>@(Model.Count() + profileForwards.Count)</strong>
+        публікацій
+    </div>
+</div>
+
+<div class="posts-grid">
+    @foreach (var post in Model)
+    {
+        @await Html.PartialAsync("_PostCard", post)
+    }
+
+    @foreach (var fwd in profileForwards)
+    {
+        <div class="forward-card">
+            <div class="forward-card__header">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                Переслано від
+                <a href="/Image/Profile/@fwd.OriginalPost.UserId">@fwd.OriginalPost.User.UserName</a>
+            </div>
+            <a href="/Image/Profile/@fwd.OriginalPost.UserId">
+                <img src="@fwd.OriginalPost.ImagePath" class="forward-card__img" />
+            </a>
+            <div class="forward-card__body">
+                @if (!string.IsNullOrWhiteSpace(fwd.Comment))
+                {
+                    <div class="forward-card__comment">@fwd.Comment</div>
+                }
+                <div class="forward-card__original">
+                    <span class="forward-card__original-author">@fwd.OriginalPost.User.UserName</span>
+                    <span class="forward-card__original-desc">@fwd.OriginalPost.Description</span>
+                </div>
+                <div class="forward-card__stats">
+                    <span>❤️ @fwd.OriginalPost.Likes.Count</span>
+                    <span>💬 @fwd.OriginalPost.Comments.Count</span>
+                    @if (currentUserId != profileUserId && currentUserId != fwd.OriginalPost.UserId)
+                    {
+                        <a href="/PostInteraction/Forward/@fwd.OriginalPostId" class="post-card__btn" style="margin-left:auto;">↪️ Переслати</a>
+                    }
+                    <span class="forward-card__date">@fwd.CreatedAt.ToString("dd.MM.yyyy")</span>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (!Model.Any() && !profileForwards.Any())
+    {
+        <p class="text-muted">Публікацій ще немає.</p>
+    }
+</div>

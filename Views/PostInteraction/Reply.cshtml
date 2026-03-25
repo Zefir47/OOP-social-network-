@@ -1,0 +1,34 @@
+@{
+    ViewData["Title"] = "Відповісти";
+    var original = ViewBag.OriginalPost as PhotoApp.Models.ImagePost;
+}
+
+<div class="form-page">
+    <h2 class="form-page__title">↩️ Відповісти на публікацію</h2>
+
+    <div class="form-page__preview">
+        <div class="form-page__preview-header">
+            Оригінальна публікація від <strong>@original.User.UserName</strong>
+        </div>
+        <a href="/Image/Profile/@original.UserId">
+            <img src="@original.ImagePath" />
+        </a>
+        <p class="form-page__preview-desc">@original.Description</p>
+    </div>
+
+    <form method="post">
+        <input type="hidden" name="id" value="@original.Id" />
+
+        <div class="mb-3">
+            <label>Ваш коментар до відповіді</label>
+            <textarea name="description" rows="4"
+                      maxlength="500"
+                      placeholder="Напишіть щось..."></textarea>
+        </div>
+
+        <div class="form-page__actions">
+            <button type="submit" class="btn-pa-primary">Відповісти</button>
+            <a href="javascript:history.back()" class="btn-pa-outline">Скасувати</a>
+        </div>
+    </form>
+</div>

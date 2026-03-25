@@ -1,0 +1,21 @@
+﻿@model PhotoApp.Models.Comment
+
+<h4>Редагування коментаря</h4>
+
+<form method="post">
+    <input type="hidden" name="returnUrl" value="@ViewBag.ReturnUrl" />
+    <textarea name="content"
+              class="form-control"
+              rows="4"
+              maxlength="1000"
+              required>@Model.Content</textarea>
+
+    <button type="submit" class="btn btn-primary mt-2">
+        Зберегти
+    </button>
+
+    <a href="@(ViewBag.ReturnUrl ?? "/")"
+       class="btn btn-secondary mt-2">
+        Скасувати
+    </a>
+</form>

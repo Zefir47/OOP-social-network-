@@ -1,0 +1,43 @@
+﻿@model IEnumerable<PhotoApp.Models.ApplicationUser>
+
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<PhotoApp.Models.ApplicationUser> UserManager
+@inject PhotoApp.Data.ApplicationDbContext Db
+
+@{
+    var currentUserId = UserManager.GetUserId(User);
+}
+
+<h2>@ViewBag.Title</h2>
+
+<ul class="list-group">
+    @foreach (var user in Model)
+    {
+        var isFollowing = Db.Follows
+        .Any(f => f.FollowerId == currentUserId && f.FollowingId == user.Id);
+
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            <a href="/Image/Profile/@user.Id">
+                @user.UserName
+            </a>
+
+            @if (currentUserId != user.Id)
+            {
+                if (isFollowing)
+                {
+                    <a href="/Follow/Unfollow/@user.Id"
+                       class="btn btn-sm btn-primary">
+                        Відписатися
+                    </a>
+                }
+                else
+                {
+                    <a href="/Follow/Follow/@user.Id"
+                       class="btn btn-sm btn-outline-primary">
+                        Підписатися
+                    </a>
+                }
+            }
+        </li>
+    }
+</ul>

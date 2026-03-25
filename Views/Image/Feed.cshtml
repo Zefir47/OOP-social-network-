@@ -1,0 +1,86 @@
+﻿@model IEnumerable<PhotoApp.Models.ImagePost>
+
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@inject UserManager<PhotoApp.Models.ApplicationUser> UserManager
+@inject PhotoApp.Data.ApplicationDbContext Db
+
+@{
+    ViewData["Title"] = "Стрічка";
+    var currentUserId = UserManager.GetUserId(User);
+}
+
+<h2>Стрічка новин</h2>
+
+<div class="row">
+    @foreach (var post in Model)
+    {
+        var isLikedByMe = post.Likes.Any(l => l.UserId == currentUserId);
+
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <img src="@post.ImagePath" class="card-img-top" />
+
+                <div class="card-body">
+                    <p>@post.Description</p>
+
+                    ❤️ @post.Likes.Count
+
+                    <hr />
+
+                    @{
+                        var comments = Db.Comments
+                        .Include(c => c.Author)
+                        .Where(c => c.ImagePostId == post.Id && c.ParentId == null)
+                        .OrderByDescending(c => c.CreatedAt)
+                        .ToList();
+                    }
+
+                    <h6>💬 Коментарі (@post.Comments.Count)</h6>
+
+                    @foreach (var comment in comments)
+                    {
+                        <div class="border p-2 mt-2">
+                            <a asp-controller="Image"
+                               asp-action="Profile"
+                               asp-route-id="@comment.Author.Id"
+                               class="fw-bold text-decoration-none">
+                                @comment.Author.UserName
+                            </a>
+                            <p>
+                                @comment.Content
+                                @if (comment.UpdatedAt != null)
+                                {
+                                    <small class="text-muted">(редаговано)</small>
+                                }
+                            </p>
+
+                            @if (comment.AuthorId == currentUserId)
+                            {
+                                <div class="mt-1">
+                                    <a asp-controller="Comment"
+                                       asp-action="Edit"
+                                       asp-route-id="@comment.Id"
+                                       asp-route-returnUrl="@(Context.Request.Path + Context.Request.QueryString)"
+                                       class="btn btn-sm btn-outline-warning">
+                                        Редагувати
+                                    </a>
+
+                                    <form method="post"
+                                          asp-controller="Comment"
+                                          asp-action="Delete"
+                                          asp-route-id="@comment.Id"
+                                          style="display:inline;">
+                                        <button class="btn btn-sm btn-outline-danger">
+                                            Видалити
+                                        </button>
+                                    </form>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
